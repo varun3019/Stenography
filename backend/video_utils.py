@@ -18,15 +18,6 @@ def load_video(path):
 
 
 def save_video(frames, output_path, fps):
-    """
-    Encode frames to H.264 MP4 using FFmpeg at CRF=23.
-
-    CRF=23 is H.264's default quality level — it targets consistent visual
-    quality rather than a fixed bitrate. This is required for DWT+DCT+SVD
-    bit survival: ABR (bitrate-targeted) encoding can quantise aggressively
-    on long/low-bitrate videos, which exceeds the embedding margin and flips bits.
-    Output size will be close to any video originally encoded at CRF 20-26.
-    """
     if len(frames) == 0:
         raise ValueError("No frames to save")
     h, w = frames[0].shape[:2]
@@ -40,8 +31,8 @@ def save_video(frames, output_path, fps):
         '-r', str(fps),
         '-i', 'pipe:',
         '-c:v', 'libx264',
-        '-crf', '23',
-        '-pix_fmt', 'yuv420p',
+        '-crf', '0',
+        '-pix_fmt', 'yuv444p',
         '-movflags', '+faststart',
         output_path,
     ]

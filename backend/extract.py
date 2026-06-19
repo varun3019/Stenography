@@ -1,4 +1,3 @@
-import cv2
 import numpy as np
 from crypto_utils import generate_key, decrypt_bytes
 from steg_core import ll_capacity, extract_bits
@@ -22,30 +21,25 @@ def extract_data(input_path, password):
     key = generate_key(password)
 
     all_bits = []
-    total_needed = None  # set once the 32-bit header is decoded
+    total_needed = None
 
     for frame in frames:
         if total_needed is not None and len(all_bits) >= total_needed:
             break
 
-        y = cv2.cvtColor(frame, cv2.COLOR_BGR2YCrCb)[:, :, 0].astype(np.float64)
-        cap = ll_capacity(y)
+        channel = frame[:, :, 0].astype(np.float64)
+        cap = ll_capacity(channel)
 
         if total_needed is None:
-            # Pull everything this frame holds until we have the header.
-            all_bits.extend(extract_bits(y, cap))
+            all_bits.extend(extract_bits(channel, cap))
 
             if len(all_bits) >= HEADER_BITS:
                 payload_length = 0
                 for b in all_bits[:HEADER_BITS]:
                     payload_length = (payload_length << 1) | b
 
-                # Sanity check: reject obviously bad values before allocating.
                 max_possible = sum(
-                    ll_capacity(
-                        cv2.cvtColor(f, cv2.COLOR_BGR2YCrCb)[:, :, 0].astype(np.float64)
-                    )
-                    for f in frames
+                    ll_capacity(f[:, :, 0].astype(np.float64)) for f in frames
                 ) - HEADER_BITS
                 if payload_length <= 0 or payload_length > max_possible:
                     raise ValueError("No hidden data found or wrong password")
@@ -53,7 +47,7 @@ def extract_data(input_path, password):
                 total_needed = HEADER_BITS + payload_length
         else:
             remaining = total_needed - len(all_bits)
-            all_bits.extend(extract_bits(y, min(remaining, cap)))
+            all_bits.extend(extract_bits(channel, min(remaining, cap)))
 
     if total_needed is None or len(all_bits) < total_needed:
         raise ValueError("No hidden data found")
